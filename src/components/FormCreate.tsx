@@ -5,9 +5,8 @@ import { api } from "@/utils/api";
 import useFormState from "@/hooks/useFormState";
 import { QuestionItem } from "./QuestionItem";
 import { v4 as uuidv4 } from "uuid";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable, } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, } from '@dnd-kit/sortable';
 export const FormCreate = ({ formData }: { formData: form }) => {
     const parseFormState = (data: any) => {
         if (data && typeof data === 'object' && !Array.isArray(data)) {

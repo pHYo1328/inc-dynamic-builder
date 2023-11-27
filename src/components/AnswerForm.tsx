@@ -1,16 +1,14 @@
 import { form, FormState } from "@/types/form";
-import { Answer } from "@/types/answer";
+import { Answer,CloudinaryUploadResult } from "@/types/answer";
 import { useState, useEffect } from "react";
 import { createDynamicZodSchema } from "@/utils/schemaGenerator";
 import { CldUploadButton, CldImage } from 'next-cloudinary';
 import { z } from "zod";
 import { api } from "@/utils/api";
-import { TRPCError } from "@trpc/server";
-interface CloudinaryUploadResult {
-    info?: {
-        secure_url?: string;
-    };
-}
+import { FileUpload } from "./FileUpload";
+
+type validationErrors = { [key: string]: string | undefined }
+
 export const AnswerForm = ({ formData }: { formData: form }) => {
     const parseFormState = (data: any) => {
         if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -21,13 +19,40 @@ export const AnswerForm = ({ formData }: { formData: form }) => {
     const formState = parseFormState(formData.formData) as FormState;
     const { data: answer, isLoading } = api.answer.getPreviousAnswer.useQuery({ formId: formData.formId });
     const [answers, setAnswers] = useState<Answer[]>([]);
+    const [validationErrors, setValidationErrors] = useState<validationErrors>({});
     const [url, setUrl] = useState<string | null>(null);
+    const [uploadStatuses, setUploadStatuses] = useState<{ [questionId: string]: boolean }>({});
+
     useEffect(() => {
         if (!isLoading) {
-            const newAnswers = Array.isArray(answer?.answerData) ? answer?.answerData : [];
-            setAnswers(newAnswers as Answer[]);
+            if (answer && Array.isArray(answer.answerData)) {
+                setAnswers(answer.answerData as Answer[]);
+            } else {
+                const initialAnswers = formState.questions.map(question => {
+                    let emptyValue: string | string[] = '';
+
+                    switch (question.questionType) {
+                        case 'checkbox':
+                            emptyValue = [];
+                            break;
+                        case 'multipleChoice':
+                        case 'shortAnswer':
+                        case 'paragraph':
+                        case 'Date':
+                        case 'Time':
+                        case 'linearScale':
+                        case 'fileUpload':
+                            emptyValue = '';
+                            break;
+                    }
+
+                    return { questionId: question.questionId, value: emptyValue };
+                });
+
+                setAnswers(initialAnswers);
+            }
         }
-    }, [answer, isLoading]);
+    }, [answer, isLoading, formState.questions]);
     const submitAnswer = api.answer.addAnswer.useMutation();
     const findAnswerIndex = (questionId: string) => answers.findIndex(answer => answer.questionId === questionId);
     const handleInputChange = (questionId: string, value: string) => {
@@ -40,6 +65,7 @@ export const AnswerForm = ({ formData }: { formData: form }) => {
         } else {
             setAnswers([...answers, { questionId, value }]);
         }
+        setValidationErrors(prev => ({ ...prev, [questionId]: undefined }));
     };
 
 
@@ -54,43 +80,54 @@ export const AnswerForm = ({ formData }: { formData: form }) => {
         } else {
             setAnswers([...answers, { questionId, value: [optionValue] }]);
         }
+        setValidationErrors(prev => ({ ...prev, [questionId]: undefined }));
     };
+
+    const zodSchema = createDynamicZodSchema(formState);
 
     const handleSubmitForm = () => {
-        // const answersArraySchema = z.array(z.object({ questionId: z.string(), value: dynamicSchema }));
-
-        submitAnswer.mutateAsync({ formId: formData.formId, answer: answers }, { onSuccess: () => { setAnswers([]); }, onError: () => { console.log("there was an error") } });
-        // try {
-
-        //     answersArraySchema.parse(answers);
-
-        //   } catch (error) {
-        //     if (error instanceof z.ZodError) {
-        //         console.log(error.issues);
-        //     }
-        //     console.error("An unexpected error occurred:", error);
-        //   }
-
-    }
-    const handleUpload = (result: CloudinaryUploadResult, widget: any, questionId: string) => {
-        if (result.info && result.info.secure_url) {
-            const index = findAnswerIndex(questionId);
-            const newAnswers = [...answers];
+        const allUploadsComplete = formState.questions.every(question => {
+            return question.questionType !== 'fileUpload' || uploadStatuses[question.questionId] === true;
+        });
     
-            if (index > -1) {
-                // Update the existing answer
-                newAnswers[index] = { ...newAnswers[index], value: result.info.secure_url } as Answer;
-            } else {
-                // Add a new answer
-                newAnswers.push({ questionId, value: result.info.secure_url });
-            }
-    
-            setAnswers(newAnswers);
-            setUrl(result.info.secure_url);
+        if (!allUploadsComplete) {
+            console.error("Please complete all file uploads before submitting.");
+            return; // Prevent form submission
         }
-    
-        widget.close();
+        console.log(answers);
+        const answersObject = answers.reduce<{ [key: string]: string | string[] }>((obj, item) => {
+            obj[item.questionId] = item.value;
+            return obj;
+        }, {});
+        console.log(JSON.stringify(answersObject));
+        try {
+            zodSchema.parse(answersObject);
+
+            submitAnswer.mutateAsync(
+                { formId: formData.formId, answer: answers },
+                {
+                    onSuccess: () => { setAnswers([]); },
+                    onError: () => { console.log("there was an error"); }
+                }
+            );
+
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                console.log(error.issues);
+                const newErrors = error.issues.reduce<validationErrors>((acc, currIssue) => {
+
+                    const questionID: string = currIssue.path[0] as string;
+                    acc[questionID] = currIssue.message;
+                    return acc;
+                }, {});
+                setValidationErrors(newErrors);
+            } else {
+                console.error("An unexpected error occurred:", error);
+            }
+        }
     };
+
+    
     return (
         <div className="mx-72">
             <div className="px-12 py-8 bg-white mb-8 rounded-xl border-t-8 border-purple-700">
@@ -100,8 +137,11 @@ export const AnswerForm = ({ formData }: { formData: form }) => {
                 {formState.questions.map((question) => (
                     <div key={question.questionId} className="px-12 py-4 bg-white mb-8 rounded-2xl">
                         <div className="flex flex-row justify-between mb-3">
-                            <p className="bg-gray-100 p-4">{question?.questionText}</p>
+                            <p className={`bg-gray-100 p-4 ${validationErrors[question.questionId] ? 'text-red-500' : ""}`}>{question?.questionText}</p>
                         </div>
+                        {validationErrors[question.questionId] && (
+                            <p className="text-red-500 px-4">{validationErrors[question.questionId]}</p>
+                        )}
                         {question.questionType === "shortAnswer" && (
                             <input className="focus:border-blue-500 focus:border-b-2 p-4 outline-none w-[500px]"
                                 value={answers.find(a => a.questionId === question.questionId)?.value || ""}
@@ -175,28 +215,7 @@ export const AnswerForm = ({ formData }: { formData: form }) => {
                         )}
 
                         {question.questionType === "fileUpload" && (
-                            <div>
-                                <CldUploadButton
-                                    className='bg-red'
-                                    onUpload={(result, widget) => {
-                                        console.log(result)
-                                        handleUpload(result as CloudinaryUploadResult, widget, question.questionId)
-                                    }}
-                                    uploadPreset="phyonn"
-                                />
-                                {
-                                    (answers.find(a => a.questionId === question.questionId)?.value || url) && (
-                                        <CldImage
-                                            width="200"
-                                            height="200"
-                                            src={answers.find(a => a.questionId === question.questionId)?.value as string || url as string}
-                                            sizes="100vw"
-                                            alt="Uploaded Image"
-                                        />
-                                    )
-                                }
-
-                            </div>
+                            <FileUpload findAnswerIndex={findAnswerIndex} answers={answers} setAnswers={setAnswers} question={question}/>
                         )}
                         {question.questionType === "linearScale" && (
                             <div className="flex flex-row items-end p-4">
@@ -234,6 +253,7 @@ export const AnswerForm = ({ formData }: { formData: form }) => {
                                 onChange={(e) => handleInputChange(question.questionId, e.target.value)}
                                 required={question.required} />
                         )}
+
                     </div>
                 ))}
             </div>
