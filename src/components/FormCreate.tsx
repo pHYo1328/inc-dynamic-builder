@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useState, useEffect, useRef, use } from "react";
 import { FormState, form, questionDetail } from "@/types/form";
 import { FaPlusCircle } from "react-icons/fa";

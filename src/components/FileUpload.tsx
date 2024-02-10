@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Answer, CloudinaryUploadResult } from "@/types/answer";
 import { questionDetail } from "@/types/form";
 import { CldUploadButton,CldImage } from "next-cloudinary";

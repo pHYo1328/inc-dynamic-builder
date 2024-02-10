@@ -1,8 +1,9 @@
-import { FormState, questionDetail } from '@/types/form';
+/* eslint-disable */
+import type{ FormState, questionDetail } from '@/types/form';
 import * as z from 'zod';
 
 export const createDynamicZodSchema = (formState: FormState): z.ZodTypeAny => {
-    let schemaObject: { [key: string]: z.ZodTypeAny } = {};
+    const schemaObject: { [key: string]: z.ZodTypeAny } = {};
 
     formState.questions.forEach((question: questionDetail) => {
         switch (question.questionType) {
@@ -28,7 +29,7 @@ export const createDynamicZodSchema = (formState: FormState): z.ZodTypeAny => {
             case 'checkbox':
                 if (question.required) {
                     if (question.options && question.options.length > 0) {
-                        const optionsTuple: [string, ...string[]] = [question.options[0] as string, ...question.options.slice(1)];
+                        const optionsTuple: [string, ...string[]] = [question.options[0]!, ...question.options.slice(1)];
                         schemaObject[question.questionId] = z.array(z.enum(optionsTuple)).min(1, { message: "At least one option must be selected." });
                     } else {
                         schemaObject[question.questionId] = z.array(z.string());

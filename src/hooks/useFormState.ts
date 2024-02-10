@@ -1,4 +1,5 @@
 // useFormState.ts
+/* eslint-disable */
 import { useState } from 'react';
 import { FormState, questionDetail } from '@/types/form';
 

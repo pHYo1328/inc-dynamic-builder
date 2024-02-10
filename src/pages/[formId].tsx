@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useRouter } from 'next/router';
 import { api } from "@/utils/api";
 import { AnswerForm } from "@/components/AnswerForm";

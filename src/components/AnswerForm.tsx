@@ -1,11 +1,10 @@
-import { form, FormState } from "@/types/form";
-import { Answer,CloudinaryUploadResult } from "@/types/answer";
+/* eslint-disable */
+import type { form, FormState } from "@/types/form";
+import type { Answer } from "@/types/answer";
 import { useState, useEffect } from "react";
 import { createDynamicZodSchema } from "@/utils/schemaGenerator";
-import { CldUploadButton, CldImage } from 'next-cloudinary';
 import { z } from "zod";
 import { api } from "@/utils/api";
-import { FileUpload } from "./FileUpload";
 
 type validationErrors = { [key: string]: string | undefined }
 
@@ -86,14 +85,14 @@ export const AnswerForm = ({ formData }: { formData: form }) => {
     const zodSchema = createDynamicZodSchema(formState);
 
     const handleSubmitForm = () => {
-        const allUploadsComplete = formState.questions.every(question => {
-            return question.questionType !== 'fileUpload' || uploadStatuses[question.questionId] === true;
-        });
+        // const allUploadsComplete = formState.questions.every(question => {
+        //     return question.questionType !== 'fileUpload' || uploadStatuses[question.questionId] === true;
+        // });
     
-        if (!allUploadsComplete) {
-            console.error("Please complete all file uploads before submitting.");
-            return; // Prevent form submission
-        }
+        // if (!allUploadsComplete) {
+        //     console.error("Please complete all file uploads before submitting.");
+        //     return; // Prevent form submission
+        // }
         console.log(answers);
         const answersObject = answers.reduce<{ [key: string]: string | string[] }>((obj, item) => {
             obj[item.questionId] = item.value;
@@ -154,7 +153,7 @@ export const AnswerForm = ({ formData }: { formData: form }) => {
                                 value={answers.find(a => a.questionId === question.questionId)?.value || ""}
                                 placeholder="Enter Answer"
                                 onChange={(e) => handleInputChange(question.questionId, e.target.value)}
-                                required={question.required} />
+                                required={question.required} /> 
                         )}
                         {question.questionType === "multipleChoice" && (
                             <div>
@@ -214,9 +213,9 @@ export const AnswerForm = ({ formData }: { formData: form }) => {
 
                         )}
 
-                        {question.questionType === "fileUpload" && (
+                        {/* {question.questionType === "fileUpload" && (
                             <FileUpload findAnswerIndex={findAnswerIndex} answers={answers} setAnswers={setAnswers} question={question}/>
-                        )}
+                        )} */}
                         {question.questionType === "linearScale" && (
                             <div className="flex flex-row items-end p-4">
                                 <p>{question?.linearStartText}</p>

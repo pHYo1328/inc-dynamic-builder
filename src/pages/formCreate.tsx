@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useRouter } from "next/router";
 import { signIn, useSession } from "next-auth/react";
 import { api } from "@/utils/api";

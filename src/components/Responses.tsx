@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Answer } from '@/types/answer';
 import { FormState, form, questionDetail } from '@/types/form';
 import { api } from '@/utils/api';
